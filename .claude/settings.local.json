@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/opt/homebrew/bin/flutter analyze *)",
+      "Bash(timeout 5 /opt/homebrew/bin/dart run main.dart)"
+    ]
+  }
+}

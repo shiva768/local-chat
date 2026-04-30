@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:uuid/uuid.dart';
 import '../server_state.dart';
@@ -39,7 +38,6 @@ Future<Response> _handlePostMessage(Request request, ServerState state) async {
       'threadId': threadId,
     };
 
-    // Save to DB
     state.db.insert('messages', {
       'id': message['id'],
       'channel_id': channelId,
@@ -50,10 +48,6 @@ Future<Response> _handlePostMessage(Request request, ServerState state) async {
       'thread_id': threadId,
     });
 
-    // Write to agent inbox if there's a mention
-    await _writeToInbox(channelId, message, state);
-
-    // Broadcast via WebSocket
     state.broadcast(jsonEncode({'type': 'message', 'data': message}));
 
     return Response.ok(
@@ -96,63 +90,4 @@ Future<Response> _handleGetMessages(Request request, ServerState state) async {
     jsonEncode(messages),
     headers: {'content-type': 'application/json'},
   );
-}
-
-Future<void> _writeToInbox(
-    String channelId, Map<String, dynamic> message, ServerState state) async {
-  final content = message['content'] as String;
-  final mentionRegex = RegExp(r'@(\w+)');
-  final mentions = mentionRegex.allMatches(content).map((m) => m.group(1)!);
-
-  for (final agentName in mentions) {
-    final agents = state.db.query(
-      'agents',
-      where: 'name = ? AND channel_id = ?',
-      whereArgs: [agentName, channelId],
-    );
-
-    for (final agent in agents) {
-      final chatDir = _getChannelChatDir(channelId, state);
-      if (chatDir == null) continue;
-
-      final inboxFile = File('$chatDir/$agentName/inbox.json');
-      await inboxFile.parent.create(recursive: true);
-
-      Map<String, dynamic> inbox = {'pending': []};
-      if (await inboxFile.exists()) {
-        try {
-          inbox = jsonDecode(await inboxFile.readAsString());
-        } catch (_) {}
-      }
-
-      final pending = inbox['pending'] as List<dynamic>;
-      pending.add({
-        'id': message['id'],
-        'from': message['from'],
-        'content': content,
-        'timestamp': message['timestamp'],
-      });
-
-      await inboxFile.writeAsString(
-          const JsonEncoder.withIndent('  ').convert(inbox));
-
-      // Update agent status to active
-      state.db.update(
-        'agents',
-        {'status': 'active'},
-        where: 'id = ?',
-        whereArgs: [agent['id']],
-      );
-      state.broadcast(jsonEncode({
-        'type': 'agentStatus',
-        'data': {'id': agent['id'], 'status': 'active'},
-      }));
-    }
-  }
-}
-
-String? _getChannelChatDir(String channelId, ServerState state) {
-  final rows = state.db.query('channels', where: 'id = ?', whereArgs: [channelId]);
-  if (rows.isEmpty) return null;
-  return rows.first['chat_dir'] as String?;
 }

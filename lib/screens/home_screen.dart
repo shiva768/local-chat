@@ -40,8 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final list = jsonDecode(res.body) as List<dynamic>;
         setState(() {
           _channels.clear();
-          _channels.addAll(
-              list.map((j) => Channel.fromJson(j as Map<String, dynamic>)));
+          _channels.addAll(list.map((j) => Channel.fromJson(j as Map<String, dynamic>)));
           _connected = true;
           if (_selectedChannel == null && _channels.isNotEmpty) {
             _selectedChannel = _channels.first;
@@ -74,30 +73,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('New Channel'),
+        title: const Text('新しいチャンネル'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Channel name'),
+              decoration: const InputDecoration(labelText: 'チャンネル名'),
               autofocus: true,
             ),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: 'Description (optional)'),
+              decoration: const InputDecoration(labelText: '説明（任意）'),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Create'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('作成')),
         ],
       ),
     );
@@ -109,9 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
           headers: {'content-type': 'application/json'},
           body: jsonEncode({
             'name': nameController.text.trim(),
-            'description': descController.text.trim().isEmpty
-                ? null
-                : descController.text.trim(),
+            'description': descController.text.trim().isEmpty ? null : descController.text.trim(),
             'chatDir': '.chat/${nameController.text.trim()}',
           }),
         );
@@ -130,16 +121,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Server Settings'),
+        title: const Text('サーバー設定'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: hostController,
-              decoration: const InputDecoration(
-                labelText: 'Host',
-                hintText: '192.168.1.x',
-              ),
+              decoration: const InputDecoration(labelText: 'Host', hintText: '192.168.1.x'),
             ),
             TextField(
               controller: portController,
@@ -149,23 +137,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Save'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('保存')),
         ],
       ),
     );
 
     if (result == true) {
-      await ServerConfig.save(
-        hostController.text.trim(),
-        portController.text.trim(),
-      );
+      await ServerConfig.save(hostController.text.trim(), portController.text.trim());
       _wsService.dispose();
       setState(() {
         _channels.clear();
@@ -185,116 +164,109 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
-        children: [
-          // Sidebar
-          Container(
-            width: 220,
-            color: const Color(0xFF3F0E40),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF3F0E40),
+        foregroundColor: Colors.white,
+        title: _selectedChannel != null
+            ? Text('# ${_selectedChannel!.name}', style: const TextStyle(fontSize: 16))
+            : const Text('Local Chat'),
+        actions: [
+          Icon(
+            _connected ? Icons.circle : Icons.circle_outlined,
+            color: _connected ? Colors.greenAccent : Colors.redAccent,
+            size: 12,
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _showSettings,
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: Container(
+          color: const Color(0xFF3F0E40),
+          child: SafeArea(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Workspace header
-                Container(
-                  height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: Alignment.centerLeft,
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.white12)),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
                   child: Row(
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'Local Chat',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                      const Text(
+                        'Local Chat',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const Spacer(),
                       Icon(
                         _connected ? Icons.circle : Icons.circle_outlined,
-                        color: _connected ? Colors.green : Colors.red,
+                        color: _connected ? Colors.greenAccent : Colors.redAccent,
                         size: 10,
                       ),
                     ],
                   ),
                 ),
-                // Channel list
+                const Divider(color: Colors.white12),
                 Expanded(
                   child: ChannelList(
                     channels: _channels,
                     selectedChannelId: _selectedChannel?.id,
-                    onChannelSelected: (ch) =>
-                        setState(() => _selectedChannel = ch),
+                    onChannelSelected: (ch) {
+                      setState(() => _selectedChannel = ch);
+                      Navigator.pop(context);
+                    },
                     onAddChannel: _addChannel,
                   ),
                 ),
-                // Bottom bar
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: const BoxDecoration(
-                    border: Border(top: BorderSide(color: Colors.white12)),
+                const Divider(color: Colors.white12),
+                ListTile(
+                  leading: const CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.person, color: Colors.white, size: 16),
                   ),
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 14,
-                        backgroundColor: Colors.white24,
-                        child: Icon(Icons.person, color: Colors.white, size: 16),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _currentUser,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white54, size: 18),
-                        onPressed: _showSettings,
-                        tooltip: 'Server settings',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
+                  title: Text(_currentUser, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.white54, size: 18),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showSettings();
+                    },
                   ),
                 ),
               ],
             ),
           ),
-          // Main content
-          Expanded(
-            child: _selectedChannel == null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.chat_bubble_outline,
-                            size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Select a channel to start chatting',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Server: ${ServerConfig.baseUrl}',
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  )
-                : ChannelScreen(
-                    key: ValueKey(_selectedChannel!.id),
-                    channel: _selectedChannel!,
-                    wsService: _wsService,
-                    currentUser: _currentUser,
-                  ),
-          ),
-        ],
+        ),
       ),
+      body: _selectedChannel == null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text('チャンネルを選択してください',
+                      style: TextStyle(color: Colors.grey, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Text(
+                    ServerConfig.baseUrl,
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          : ChannelScreen(
+              key: ValueKey(_selectedChannel!.id),
+              channel: _selectedChannel!,
+              wsService: _wsService,
+              currentUser: _currentUser,
+            ),
     );
   }
 }

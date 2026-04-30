@@ -133,31 +133,6 @@ class _ChannelScreenState extends State<ChannelScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header
-        Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-          ),
-          child: Row(
-            children: [
-              Text(
-                '# ${widget.channel.name}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              if (widget.channel.description != null) ...[
-                const SizedBox(width: 8),
-                Text(
-                  widget.channel.description!,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                ),
-              ],
-              const Spacer(),
-            ],
-          ),
-        ),
         // Messages
         Expanded(
           child: _loading

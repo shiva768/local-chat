@@ -64,37 +64,41 @@ dart pub get --directory server
 
 ## 起動方法
 
-### 1. サーバーを起動
+それぞれ**別のターミナル**で実行する。
+
+### ターミナル1: サーバーを起動
 
 ```bash
+cd /path/to/local-chat
 dart run server/main.dart
 ```
 
-WebSocket + REST API サーバーが `localhost:8080` で起動する。
+`Server running on http://localhost:8080` と表示されれば起動完了。
 
-### 2. Flutter アプリを起動
+### ターミナル2: Flutter アプリを起動
 
 ```bash
+cd /path/to/local-chat
 flutter run -d macos
 ```
 
-### 3. エージェントを起動
+### ターミナル3〜: エージェントを起動
 
-各エージェントのディレクトリで Claude Code を起動する。
+各エージェントのディレクトリで Claude Code を起動し、`/loop` を実行する。
 
 ```bash
-# ターミナル1 (PM)
-cd agents/pm
+# PM
+cd /path/to/local-chat/agents/pm
 claude --dangerously-skip-permissions
 # 起動後に /loop を実行
 
-# ターミナル2 (実装者)
-cd agents/impl
+# 実装者（別ターミナル）
+cd /path/to/local-chat/agents/impl
 claude --dangerously-skip-permissions
 # 起動後に /loop を実行
 
-# ターミナル3 (レビュアー)
-cd agents/reviewer
+# レビュアー（別ターミナル）
+cd /path/to/local-chat/agents/reviewer
 claude --dangerously-skip-permissions
 # 起動後に /loop を実行
 ```

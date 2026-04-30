@@ -1,15 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:uuid/uuid.dart';
 import '../models/channel.dart';
 import '../models/message.dart';
-import '../models/agent.dart' as ag;
 import '../services/websocket_service.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
-
-final _uuid = Uuid();
 
 class ChannelScreen extends StatefulWidget {
   final Channel channel;
@@ -29,17 +26,18 @@ class ChannelScreen extends StatefulWidget {
 
 class _ChannelScreenState extends State<ChannelScreen> {
   final List<Message> _messages = [];
-  final List<ag.Agent> _agents = [];
   final _scrollController = ScrollController();
   bool _loading = true;
+  Timer? _pollTimer;
 
   static const _baseUrl = 'http://localhost:8080';
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadMessages();
     widget.wsService.events.listen(_onWsEvent);
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadMessages());
   }
 
   @override
@@ -50,14 +48,15 @@ class _ChannelScreenState extends State<ChannelScreen> {
         _messages.clear();
         _loading = true;
       });
-      _loadData();
+      _loadMessages();
     }
   }
 
-  Future<void> _loadData() async {
-    await Future.wait([_loadMessages(), _loadAgents()]);
-    setState(() => _loading = false);
-    _scrollToBottom();
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadMessages() async {
@@ -67,30 +66,22 @@ class _ChannelScreenState extends State<ChannelScreen> {
       );
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List<dynamic>;
-        setState(() {
-          _messages.clear();
-          _messages.addAll(list.map((j) => Message.fromJson(j as Map<String, dynamic>)));
-        });
+        final fetched = list.map((j) => Message.fromJson(j as Map<String, dynamic>)).toList();
+        final existingIds = _messages.map((m) => m.id).toSet();
+        final newMessages = fetched.where((m) => !existingIds.contains(m.id)).toList();
+        if (newMessages.isNotEmpty) {
+          setState(() {
+            _messages.addAll(newMessages);
+            _loading = false;
+          });
+          _scrollToBottom();
+        } else {
+          setState(() => _loading = false);
+        }
       }
     } catch (e) {
       debugPrint('Load messages error: $e');
-    }
-  }
-
-  Future<void> _loadAgents() async {
-    try {
-      final res = await http.get(
-        Uri.parse('$_baseUrl/api/agents?channelId=${widget.channel.id}'),
-      );
-      if (res.statusCode == 200) {
-        final list = jsonDecode(res.body) as List<dynamic>;
-        setState(() {
-          _agents.clear();
-          _agents.addAll(list.map((j) => ag.Agent.fromJson(j as Map<String, dynamic>)));
-        });
-      }
-    } catch (e) {
-      debugPrint('Load agents error: $e');
+      setState(() => _loading = false);
     }
   }
 
@@ -98,23 +89,12 @@ class _ChannelScreenState extends State<ChannelScreen> {
     if (event.type == WsEventType.message) {
       final msg = Message.fromJson(event.data);
       if (msg.channelId == widget.channel.id) {
-        setState(() => _messages.add(msg));
-        _scrollToBottom();
-      }
-    } else if (event.type == WsEventType.agentStatus) {
-      final id = event.data['id'] as String;
-      final status = event.data['status'] as String;
-      setState(() {
-        final idx = _agents.indexWhere((a) => a.id == id);
-        if (idx >= 0) {
-          _agents[idx] = _agents[idx].copyWith(
-            status: ag.AgentStatus.values.firstWhere(
-              (s) => s.name == status,
-              orElse: () => ag.AgentStatus.idle,
-            ),
-          );
+        final exists = _messages.any((m) => m.id == msg.id);
+        if (!exists) {
+          setState(() => _messages.add(msg));
+          _scrollToBottom();
         }
-      });
+      }
     }
   }
 
@@ -172,27 +152,6 @@ class _ChannelScreenState extends State<ChannelScreen> {
                 ),
               ],
               const Spacer(),
-              // Agent status indicators
-              ..._agents.map((a) => Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Chip(
-                      label: Text(
-                        a.name,
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      avatar: CircleAvatar(
-                        radius: 4,
-                        backgroundColor: _statusColor(a.status),
-                      ),
-                      padding: EdgeInsets.zero,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  )),
-              IconButton(
-                icon: const Icon(Icons.person_add_outlined),
-                onPressed: _showAddAgentDialog,
-                tooltip: 'Add agent',
-              ),
             ],
           ),
         ),
@@ -228,60 +187,4 @@ class _ChannelScreenState extends State<ChannelScreen> {
     );
   }
 
-  Color _statusColor(ag.AgentStatus status) {
-    switch (status) {
-      case ag.AgentStatus.active:
-        return Colors.green;
-      case ag.AgentStatus.idle:
-        return Colors.grey;
-      case ag.AgentStatus.sleeping:
-        return Colors.orange;
-    }
-  }
-
-  Future<void> _showAddAgentDialog() async {
-    final nameController = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Agent'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(
-            labelText: 'Agent name',
-            hintText: 'e.g. impl, reviewer',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, nameController.text),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null && result.isNotEmpty) {
-      try {
-        await http.post(
-          Uri.parse('$_baseUrl/api/agents'),
-          headers: {'content-type': 'application/json'},
-          body: jsonEncode({
-            'id': _uuid.v4(),
-            'name': result,
-            'channelId': widget.channel.id,
-            'status': 'idle',
-          }),
-        );
-        await _loadAgents();
-      } catch (e) {
-        debugPrint('Add agent error: $e');
-      }
-    }
-  }
 }

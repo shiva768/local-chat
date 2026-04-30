@@ -1,13 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:uuid/uuid.dart';
 import '../models/channel.dart';
 import '../services/websocket_service.dart';
 import '../widgets/channel_list.dart';
 import 'channel_screen.dart';
-
-final _uuid = Uuid();
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -109,7 +106,6 @@ class _HomeScreenState extends State<HomeScreen> {
           Uri.parse('$_baseUrl/api/channels'),
           headers: {'content-type': 'application/json'},
           body: jsonEncode({
-            'id': _uuid.v4(),
             'name': nameController.text.trim(),
             'description': descController.text.trim().isEmpty
                 ? null

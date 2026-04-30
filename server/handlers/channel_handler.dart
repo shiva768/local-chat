@@ -55,8 +55,8 @@ Future<Response> _handlePostChannel(
     final body = await request.readAsString();
     final data = jsonDecode(body) as Map<String, dynamic>;
 
-    final id = data['id'] as String? ?? _uuid.v4();
     final name = data['name'] as String;
+    final id = data['id'] as String? ?? name;
     final description = data['description'] as String?;
     final chatDir = data['chatDir'] as String? ?? '.chat/$name';
 

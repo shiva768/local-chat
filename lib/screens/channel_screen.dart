@@ -30,6 +30,7 @@ class _ChannelScreenState extends State<ChannelScreen> {
   final _scrollController = ScrollController();
   bool _loading = true;
   Timer? _pollTimer;
+  StreamSubscription<WsEvent>? _wsSub;
 
   String get _baseUrl => ServerConfig.baseUrl;
 
@@ -37,7 +38,7 @@ class _ChannelScreenState extends State<ChannelScreen> {
   void initState() {
     super.initState();
     _loadMessages();
-    widget.wsService.events.listen(_onWsEvent);
+    _wsSub = widget.wsService.events.listen(_onWsEvent);
     _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadMessages());
   }
 
@@ -56,6 +57,7 @@ class _ChannelScreenState extends State<ChannelScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _wsSub?.cancel();
     _scrollController.dispose();
     super.dispose();
   }

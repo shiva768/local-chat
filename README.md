@@ -69,7 +69,7 @@ dart pub get --directory server
 ### ターミナル1: サーバーを起動
 
 ```bash
-cd /path/to/local-chat
+cd local-chat
 dart run server/main.dart
 ```
 
@@ -78,7 +78,7 @@ dart run server/main.dart
 ### ターミナル2: Flutter アプリを起動
 
 ```bash
-cd /path/to/local-chat
+cd local-chat
 flutter run -d macos
 ```
 
@@ -87,18 +87,18 @@ flutter run -d macos
 各エージェントのディレクトリで Claude Code を起動し、`/loop` を実行する。
 
 ```bash
-# PM
-cd /path/to/local-chat/agents/pm
+# PM（別ターミナル）
+cd local-chat/agents/pm
 claude --dangerously-skip-permissions
 # 起動後に /loop を実行
 
 # 実装者（別ターミナル）
-cd /path/to/local-chat/agents/impl
+cd local-chat/agents/impl
 claude --dangerously-skip-permissions
 # 起動後に /loop を実行
 
 # レビュアー（別ターミナル）
-cd /path/to/local-chat/agents/reviewer
+cd local-chat/agents/reviewer
 claude --dangerously-skip-permissions
 # 起動後に /loop を実行
 ```

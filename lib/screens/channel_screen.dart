@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/channel.dart';
 import '../models/message.dart';
 import '../services/websocket_service.dart';
+import '../services/server_config.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
 
@@ -30,7 +31,7 @@ class _ChannelScreenState extends State<ChannelScreen> {
   bool _loading = true;
   Timer? _pollTimer;
 
-  static const _baseUrl = 'http://localhost:8080';
+  String get _baseUrl => ServerConfig.baseUrl;
 
   @override
   void initState() {

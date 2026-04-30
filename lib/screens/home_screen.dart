@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/channel.dart';
 import '../services/websocket_service.dart';
+import '../services/server_config.dart';
 import '../widgets/channel_list.dart';
 import 'channel_screen.dart';
 
@@ -20,19 +21,21 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _connected = false;
   final String _currentUser = 'human';
 
-  static const _baseUrl = 'http://localhost:8080';
-
   @override
   void initState() {
     super.initState();
-    _wsService.connect();
+    _connect();
+  }
+
+  void _connect() {
+    _wsService.connect(url: ServerConfig.wsUrl);
     _wsService.events.listen(_onWsEvent);
     _loadChannels();
   }
 
   Future<void> _loadChannels() async {
     try {
-      final res = await http.get(Uri.parse('$_baseUrl/api/channels'));
+      final res = await http.get(Uri.parse('${ServerConfig.baseUrl}/api/channels'));
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List<dynamic>;
         setState(() {
@@ -47,7 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       setState(() => _connected = false);
-      // Retry after 3 seconds
       Future.delayed(const Duration(seconds: 3), _loadChannels);
     }
   }
@@ -103,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result == true && nameController.text.isNotEmpty) {
       try {
         final res = await http.post(
-          Uri.parse('$_baseUrl/api/channels'),
+          Uri.parse('${ServerConfig.baseUrl}/api/channels'),
           headers: {'content-type': 'application/json'},
           body: jsonEncode({
             'name': nameController.text.trim(),
@@ -119,6 +121,58 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (e) {
         debugPrint('Create channel error: $e');
       }
+    }
+  }
+
+  Future<void> _showSettings() async {
+    final hostController = TextEditingController(text: ServerConfig.host);
+    final portController = TextEditingController(text: ServerConfig.port);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Server Settings'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: hostController,
+              decoration: const InputDecoration(
+                labelText: 'Host',
+                hintText: '192.168.1.x',
+              ),
+            ),
+            TextField(
+              controller: portController,
+              decoration: const InputDecoration(labelText: 'Port'),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await ServerConfig.save(
+        hostController.text.trim(),
+        portController.text.trim(),
+      );
+      _wsService.dispose();
+      setState(() {
+        _channels.clear();
+        _selectedChannel = null;
+        _connected = false;
+      });
+      _connect();
     }
   }
 
@@ -145,8 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   alignment: Alignment.centerLeft,
                   decoration: const BoxDecoration(
-                    border: Border(
-                        bottom: BorderSide(color: Colors.white12)),
+                    border: Border(bottom: BorderSide(color: Colors.white12)),
                   ),
                   child: Row(
                     children: [
@@ -178,9 +231,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     onAddChannel: _addChannel,
                   ),
                 ),
-                // Current user
+                // Bottom bar
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: const BoxDecoration(
                     border: Border(top: BorderSide(color: Colors.white12)),
                   ),
@@ -192,9 +245,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Icon(Icons.person, color: Colors.white, size: 16),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        _currentUser,
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      Expanded(
+                        child: Text(
+                          _currentUser,
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.settings, color: Colors.white54, size: 18),
+                        onPressed: _showSettings,
+                        tooltip: 'Server settings',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
@@ -205,22 +267,21 @@ class _HomeScreenState extends State<HomeScreen> {
           // Main content
           Expanded(
             child: _selectedChannel == null
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.chat_bubble_outline,
+                        const Icon(Icons.chat_bubble_outline,
                             size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
+                        const SizedBox(height: 16),
+                        const Text(
                           'Select a channel to start chatting',
                           style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
-                          'Make sure the server is running:\ndart run server/main.dart',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                          'Server: ${ServerConfig.baseUrl}',
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                       ],
                     ),

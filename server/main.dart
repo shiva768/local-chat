@@ -44,8 +44,8 @@ void main() async {
       .addMiddleware(_corsMiddleware())
       .addHandler(router.call);
 
-  final server = await io.serve(handler, 'localhost', 8080);
-  print('Server running on http://localhost:${server.port}');
+  final server = await io.serve(handler, '0.0.0.0', 8080);
+  print('Server running on http://0.0.0.0:${server.port}');
 }
 
 Middleware _corsMiddleware() {

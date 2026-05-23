@@ -66,10 +66,15 @@ Future<Response> _handleGetMessages(Request request, ServerState state) async {
     return Response.badRequest(body: 'channelId required');
   }
 
+  final sinceParam = request.url.queryParameters['since'];
+  final sinceMs = sinceParam != null
+      ? DateTime.tryParse(sinceParam)?.millisecondsSinceEpoch
+      : null;
+
   final rows = state.db.query(
     'messages',
-    where: 'channel_id = ?',
-    whereArgs: [channelId],
+    where: sinceMs != null ? 'channel_id = ? AND timestamp > ?' : 'channel_id = ?',
+    whereArgs: sinceMs != null ? [channelId, sinceMs] : [channelId],
     orderBy: 'timestamp ASC',
   );
 

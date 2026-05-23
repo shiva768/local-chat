@@ -28,6 +28,7 @@ class ChannelScreen extends StatefulWidget {
 class _ChannelScreenState extends State<ChannelScreen> {
   final List<Message> _messages = [];
   final _scrollController = ScrollController();
+  final _inputController = TextEditingController();
   bool _loading = true;
   Timer? _pollTimer;
   StreamSubscription<WsEvent>? _wsSub;
@@ -59,6 +60,7 @@ class _ChannelScreenState extends State<ChannelScreen> {
     _pollTimer?.cancel();
     _wsSub?.cancel();
     _scrollController.dispose();
+    _inputController.dispose();
     super.dispose();
   }
 
@@ -77,7 +79,6 @@ class _ChannelScreenState extends State<ChannelScreen> {
             _messages.addAll(newMessages);
             _loading = false;
           });
-          _scrollToBottom();
         } else {
           setState(() => _loading = false);
         }
@@ -117,11 +118,22 @@ class _ChannelScreenState extends State<ChannelScreen> {
     }
   }
 
+  void _insertMention(String name) {
+    final text = _inputController.text;
+    final cursor = _inputController.selection.baseOffset;
+    final pos = cursor < 0 ? text.length : cursor;
+    final newText = '${text.substring(0, pos)}@$name ${text.substring(pos)}';
+    _inputController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: pos + name.length + 2),
+    );
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
@@ -133,7 +145,6 @@ class _ChannelScreenState extends State<ChannelScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Messages
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
@@ -147,23 +158,26 @@ class _ChannelScreenState extends State<ChannelScreen> {
                     )
                   : ListView.builder(
                       controller: _scrollController,
+                      reverse: true,
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       itemCount: _messages.length,
-                      itemBuilder: (_, i) => MessageBubble(
-                        message: _messages[i],
-                        isCurrentUser:
-                            _messages[i].from == widget.currentUser,
-                      ),
+                      itemBuilder: (_, i) {
+                        final msg = _messages[_messages.length - 1 - i];
+                        return MessageBubble(
+                          message: msg,
+                          isCurrentUser: msg.from == widget.currentUser,
+                          onTapSender: _insertMention,
+                        );
+                      },
                     ),
         ),
-        // Input
         MessageInput(
           channelName: widget.channel.name,
           participants: _messages.map((m) => m.from).toSet().toList(),
+          controller: _inputController,
           onSend: _sendMessage,
         ),
       ],
     );
   }
-
 }

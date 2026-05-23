@@ -11,7 +11,7 @@ import 'package:local_chat/main.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const LocalChatApp());
+    await tester.pumpWidget(const LocalChatApp(initialChannelId: ''));
     expect(find.byType(LocalChatApp), findsOneWidget);
   });
 }

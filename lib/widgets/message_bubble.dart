@@ -5,11 +5,13 @@ import '../models/message.dart';
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isCurrentUser;
+  final void Function(String)? onTapSender;
 
   const MessageBubble({
     super.key,
     required this.message,
     required this.isCurrentUser,
+    this.onTapSender,
   });
 
   @override
@@ -38,19 +40,26 @@ class MessageBubble extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      message.from,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: color,
+                    TextButton(
+                      onPressed: () => onTapSender?.call(message.from),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        message.from,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: color,
+                        ),
                       ),
                     ),
                     if (isAgent)
                       Container(
                         margin: const EdgeInsets.only(left: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                         decoration: BoxDecoration(
                           color: Colors.blue.shade100,
                           borderRadius: BorderRadius.circular(4),
@@ -63,8 +72,7 @@ class MessageBubble extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       timeFormat.format(message.timestamp.toLocal()),
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500),
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                     ),
                   ],
                 ),
@@ -80,7 +88,6 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final text = message.content;
-    // Highlight mentions
     final spans = <InlineSpan>[];
     final mentionRegex = RegExp(r'(@[\w-]+)');
     int last = 0;
@@ -91,8 +98,7 @@ class MessageBubble extends StatelessWidget {
       }
       spans.add(TextSpan(
         text: match.group(0),
-        style: const TextStyle(
-            color: Colors.blue, fontWeight: FontWeight.w600),
+        style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
       ));
       last = match.end;
     }

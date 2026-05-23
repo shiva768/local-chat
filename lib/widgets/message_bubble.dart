@@ -5,11 +5,13 @@ import '../models/message.dart';
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isCurrentUser;
+  final void Function(String)? onTapSender;
 
   const MessageBubble({
     super.key,
     required this.message,
     required this.isCurrentUser,
+    this.onTapSender,
   });
 
   @override
@@ -38,12 +40,20 @@ class MessageBubble extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      message.from,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: color,
+                    TextButton(
+                      onPressed: () => onTapSender?.call(message.from),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        message.from,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: color,
+                        ),
                       ),
                     ),
                     if (isAgent)

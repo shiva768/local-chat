@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 class MessageInput extends StatefulWidget {
   final String channelName;
   final List<String> participants;
+  final TextEditingController? controller;
   final void Function(String message) onSend;
 
   const MessageInput({
     super.key,
     required this.channelName,
     required this.participants,
+    this.controller,
     required this.onSend,
   });
 
@@ -17,12 +19,13 @@ class MessageInput extends StatefulWidget {
 }
 
 class _MessageInputState extends State<MessageInput> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
   List<String> _suggestions = [];
 
   @override
   void initState() {
     super.initState();
+    _controller = widget.controller ?? TextEditingController();
     _controller.addListener(_onTextChanged);
   }
 
@@ -76,7 +79,7 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (widget.controller == null) _controller.dispose();
     super.dispose();
   }
 

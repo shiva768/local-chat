@@ -82,7 +82,7 @@ class MessageBubble extends StatelessWidget {
     final text = message.content;
     // Highlight mentions
     final spans = <InlineSpan>[];
-    final mentionRegex = RegExp(r'(@\w+)');
+    final mentionRegex = RegExp(r'(@[\w-]+)');
     int last = 0;
 
     for (final match in mentionRegex.allMatches(text)) {

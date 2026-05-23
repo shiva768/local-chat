@@ -159,6 +159,7 @@ class _ChannelScreenState extends State<ChannelScreen> {
         // Input
         MessageInput(
           channelName: widget.channel.name,
+          participants: _messages.map((m) => m.from).toSet().toList(),
           onSend: _sendMessage,
         ),
       ],

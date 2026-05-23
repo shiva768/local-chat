@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 class MessageInput extends StatefulWidget {
   final String channelName;
   final List<String> participants;
+  final TextEditingController? controller;
   final void Function(String message) onSend;
 
   const MessageInput({
     super.key,
     required this.channelName,
     required this.participants,
+    this.controller,
     required this.onSend,
   });
 
@@ -17,17 +19,28 @@ class MessageInput extends StatefulWidget {
 }
 
 class _MessageInputState extends State<MessageInput> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
   List<String> _suggestions = [];
+  int _selectedIndex = 0;
+  int _prevLength = 0;
 
   @override
   void initState() {
     super.initState();
+    _controller = widget.controller ?? TextEditingController();
     _controller.addListener(_onTextChanged);
   }
 
   void _onTextChanged() {
     final text = _controller.text;
+    final isDeleting = text.length < _prevLength;
+    _prevLength = text.length;
+
+    if (isDeleting) {
+      setState(() => _suggestions = []);
+      return;
+    }
+
     final cursor = _controller.selection.baseOffset;
     if (cursor < 0) {
       setState(() => _suggestions = []);
@@ -50,7 +63,10 @@ class _MessageInputState extends State<MessageInput> {
     final filtered = widget.participants
         .where((p) => p.toLowerCase().startsWith(partial.toLowerCase()))
         .toList();
-    setState(() => _suggestions = filtered);
+    setState(() {
+      _suggestions = filtered;
+      _selectedIndex = 0;
+    });
   }
 
   void _insertMention(String name) {
@@ -76,8 +92,20 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (widget.controller == null) _controller.dispose();
     super.dispose();
+  }
+
+  Color _colorForSender(String sender) {
+    final colors = [
+      Colors.indigo,
+      Colors.teal,
+      Colors.orange,
+      Colors.purple,
+      Colors.green,
+      Colors.red,
+    ];
+    return colors[sender.hashCode.abs() % colors.length];
   }
 
   @override
@@ -88,45 +116,79 @@ class _MessageInputState extends State<MessageInput> {
         children: [
           if (_suggestions.isNotEmpty)
             Container(
-              constraints: const BoxConstraints(maxHeight: 160),
+              constraints: const BoxConstraints(maxHeight: 200),
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                border: Border.all(color: Colors.grey.shade200),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 4,
-                    offset: const Offset(0, -2),
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, -4),
                   ),
                 ],
               ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: _suggestions.length,
-                itemBuilder: (_, i) {
-                  final name = _suggestions[i];
-                  return InkWell(
-                    onTap: () => _insertMention(name),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 12,
-                            backgroundColor: const Color(0xFF3F0E40),
-                            child: Text(
-                              name[0].toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontSize: 11),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: Text(
+                      'メンバー候補',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.only(bottom: 4),
+                      itemCount: _suggestions.length,
+                      itemBuilder: (_, i) {
+                        final name = _suggestions[i];
+                        final isSelected = i == _selectedIndex;
+                        final color = _colorForSender(name);
+                        return InkWell(
+                          onTap: () => _insertMention(name),
+                          onHover: (hovering) {
+                            if (hovering) setState(() => _selectedIndex = i);
+                          },
+                          child: Container(
+                            color: isSelected ? const Color(0xFF3F0E40).withValues(alpha: 0.08) : Colors.transparent,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: color,
+                                  child: Text(
+                                    name[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                    ),
+                                    Text(
+                                      '@$name',
+                                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text('@$name', style: const TextStyle(fontSize: 14)),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
           Container(

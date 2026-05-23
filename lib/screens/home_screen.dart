@@ -4,11 +4,14 @@ import 'package:http/http.dart' as http;
 import '../models/channel.dart';
 import '../services/websocket_service.dart';
 import '../services/server_config.dart';
+import '../utils/url_helper.dart';
 import '../widgets/channel_list.dart';
 import 'channel_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String initialChannelId;
+
+  const HomeScreen({super.key, this.initialChannelId = ''});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -43,7 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
           _channels.addAll(list.map((j) => Channel.fromJson(j as Map<String, dynamic>)));
           _connected = true;
           if (_selectedChannel == null && _channels.isNotEmpty) {
-            _selectedChannel = _channels.first;
+            _selectedChannel = _channels.firstWhere(
+              (c) => c.id == widget.initialChannelId,
+              orElse: () => _channels.first,
+            );
+            setUrlHash(_selectedChannel!.id);
           }
         });
       }
@@ -218,6 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     selectedChannelId: _selectedChannel?.id,
                     onChannelSelected: (ch) {
                       setState(() => _selectedChannel = ch);
+                      setUrlHash(ch.id);
                       Navigator.pop(context);
                     },
                     onAddChannel: _addChannel,
